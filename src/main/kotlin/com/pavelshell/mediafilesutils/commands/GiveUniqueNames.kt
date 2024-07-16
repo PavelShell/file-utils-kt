@@ -1,5 +1,6 @@
 package com.pavelshell.mediafilesutils.commands
 
+import com.pavelshell.mediafilesutils.common.FileTreeWalker
 import org.springframework.shell.command.annotation.Command
 import org.springframework.shell.command.annotation.Option
 import java.io.File
@@ -15,19 +16,13 @@ class GiveUniqueNames {
     fun run(
         @Option(label = "path", longNames = ["path"], required = true) pathString: String
     ): String {
-        val fileOrFolder = Path.of(pathString).let {
-            if (!it.exists()) throw FileNotFoundException("File or folder at path $pathString not exists!")
-            it.toFile()
-        }
         val uuid = UUID.randomUUID()
         var fileNumber = 0
-        fileOrFolder.walkTopDown().forEach { file ->
-            if (file.isFile) {
-                val prefix = "${fileNumber++}$uuid"
-                val suffix = if (file.extension.isNotEmpty()) ".${file.extension}" else ""
-                val newName = File(file.parentFile, "$prefix$suffix")
-                file.renameTo(newName)
-            }
+        FileTreeWalker.forEachFile(pathString) { file ->
+            val prefix = "${fileNumber++}$uuid"
+            val suffix = if (file.extension.isNotEmpty()) ".${file.extension}" else ""
+            val newName = File(file.parentFile, "$prefix$suffix")
+            file.renameTo(newName)
         }
         val fileOfFiles = if (fileNumber > 1) "files" else "file"
         return "Done. $fileNumber $fileOfFiles renamed."
