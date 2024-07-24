@@ -1,49 +1,86 @@
 package com.pavelshell.mediafilesutils.commands
 
 import com.pavelshell.mediafilesutils.common.FileTreeWalker
-import org.springframework.shell.command.annotation.Command
-import org.springframework.shell.command.annotation.Option
-import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import org.bytedeco.opencv.global.opencv_core
 import org.bytedeco.opencv.global.opencv_imgcodecs
 import org.bytedeco.opencv.global.opencv_imgproc
+import org.bytedeco.opencv.opencv_core.DMatchVector
+import org.bytedeco.opencv.opencv_core.KeyPointVector
 import org.bytedeco.opencv.opencv_core.Mat
-
+import org.bytedeco.opencv.opencv_core.Size
+import org.bytedeco.opencv.opencv_features2d.BFMatcher
+import org.springframework.shell.command.annotation.Command
+import org.springframework.shell.command.annotation.Option
+import java.io.File
 
 @Command
 class DeleteDuplicates {
 
-
-    @Command(command = ["delete-duplicates"], description = "Gives a unique names")
+    @Command(
+        command = ["delete-duplicate-images"],
+        description = "For each image in the directory and all sub-directories deletes duplicated images" +
+                " and leaves only the one copy with the best quality, judging by size."
+    )
     fun run(
         @Option(label = "path", longNames = ["path"], required = true) pathString: String
-    ): String {
-        val files = FileTreeWalker.getFiles(pathString)
+    ): String = runBlocking(Dispatchers.Default) {
+        val filesToDescriptors = FileTreeWalker.getFiles(pathString)
+            .map { async { it to computeKeyPointsDescriptors(readMatrix(it)) } }
+            .awaitAll()
+            .toMap()
         val checkedFiles = mutableSetOf<File>()
         val duplicates = mutableMapOf<File, Collection<File>>()
-        for (fileToCompare in files) {
-            if (checkedFiles.contains(fileToCompare)) continue
-            checkedFiles += fileToCompare
-            for (file in files - checkedFiles) {
-                if (areSame(fileToCompare, file)) {
-                    checkedFiles += file
-                    duplicates.merge(fileToCompare, listOf(file)) { old, new -> old + new }
+        filesToDescriptors.entries.forEach { (fileToCompare, descriptor) ->
+            if (!checkedFiles.contains(fileToCompare)) {
+                checkedFiles.add(fileToCompare)
+                for (fileToDescriptor in (filesToDescriptors - checkedFiles)) {
+                    if (computeDescriptorsDifference(fileToDescriptor.value, descriptor) < 15) {
+                        checkedFiles.add(fileToDescriptor.key)
+                        duplicates.merge(fileToCompare, listOf(fileToDescriptor.key)) { old, new -> old + new }
+                    }
                 }
             }
+            println("Checked ${checkedFiles.size} files...")
         }
-        return "Found duplicates $duplicates"
+        println("Deleting duplicates...")
+        duplicates.forEach { (file, sameFiles) ->
+            (sameFiles + file)
+                .toMutableList()
+                .sortedBy { it.length() }
+                .run { dropLast(1) }
+                .forEach { it.delete() }
+        }
+        return@runBlocking "Checked ${checkedFiles.size} files " +
+                "and deleted ${duplicates.values.flatten().size} duplicates for ${duplicates.keys.size} files."
+//        delete-duplicate-images "T:\\heap\\post\\pictures\\a - Copy"
+//        delete-duplicate-images "T:\\heap\\pic\\a - Copy"
     }
 
-    private fun areSame(a: File, b: File): Boolean {
-        val img1Matrix = readMatrix(a)
-        val img2Matrix = Mat().also { opencv_imgproc.resize(readMatrix(b), it, img1Matrix.size()) }
-        val diffMatrix = Mat().also { opencv_core.absdiff(img1Matrix, img2Matrix, it) }
-        val diffPixelCount = opencv_core.countNonZero(diffMatrix)
-        val similarityCoefficient = 1.0 - (diffPixelCount.toDouble() / (diffMatrix.rows() * diffMatrix.cols()))
-        return similarityCoefficient > 0.9
-    }
+    private fun Mat.resizeTo(size: Size): Mat = Mat().also { opencv_imgproc.resize(this, it, size) }
 
     private fun readMatrix(a: File) = opencv_imgcodecs.imread(a.path, opencv_imgcodecs.IMREAD_GRAYSCALE)
-        .also { if (it.empty()) throw IllegalArgumentException("Can't read image $it.") }
+        .also { if (it.empty()) throw IllegalArgumentException("Can't read image $a.") }
+        .resizeTo(Size(500, 500))
+
+    private fun computeKeyPointsDescriptors(image: Mat): Mat {
+        val keyPoints = KeyPointVector().also { ORB.detect(image, it) }
+        val descriptors = Mat().also { ORB.compute(image, keyPoints, it) }
+        return descriptors
+    }
+
+    private fun computeDescriptorsDifference(descriptors1: Mat, descriptors2: Mat): Double {
+        val matches = DMatchVector()
+        MATCHER.match(descriptors1, descriptors2, matches)
+        val totalDistance = matches.get().sumOf { it.distance().toDouble() }
+        return totalDistance / matches.get().size
+    }
+
+    private companion object {
+        private val ORB = org.bytedeco.opencv.opencv_features2d.ORB.create()
+        private val MATCHER = BFMatcher(opencv_core.NORM_HAMMING, true)
+    }
 }
-//delete-duplicates T:\\heap\\pic\\duplicates_test

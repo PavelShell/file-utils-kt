@@ -22,6 +22,7 @@ extra["springShellVersion"] = "3.2.4"
 
 dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
+	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 	implementation("org.springframework.shell:spring-shell-starter")
 	implementation("org.bytedeco:opencv-platform:4.9.0-1.5.10")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
