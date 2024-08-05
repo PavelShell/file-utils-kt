@@ -18,7 +18,7 @@ import org.springframework.shell.command.annotation.Option
 import java.io.File
 
 @Command
-class DeleteDuplicates {
+class DeleteDuplicateImages {
 
     @Command(
         command = ["delete-duplicate-images"],
@@ -43,8 +43,8 @@ class DeleteDuplicates {
                         duplicates.merge(fileToCompare, listOf(fileToDescriptor.key)) { old, new -> old + new }
                     }
                 }
+                println("Checked ${checkedFiles.size} files...")
             }
-            println("Checked ${checkedFiles.size} files...")
         }
         println("Deleting duplicates...")
         duplicates.forEach { (file, sameFiles) ->
@@ -56,8 +56,6 @@ class DeleteDuplicates {
         }
         return@runBlocking "Checked ${checkedFiles.size} files " +
                 "and deleted ${duplicates.values.flatten().size} duplicates for ${duplicates.keys.size} files."
-//        delete-duplicate-images "T:\\heap\\post\\pictures\\a - Copy"
-//        delete-duplicate-images "T:\\heap\\pic\\a - Copy"
     }
 
     private fun Mat.resizeTo(size: Size): Mat = Mat().also { opencv_imgproc.resize(this, it, size) }

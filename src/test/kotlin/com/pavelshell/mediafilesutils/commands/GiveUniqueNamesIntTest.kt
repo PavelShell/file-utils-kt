@@ -20,8 +20,6 @@ import kotlin.io.path.*
 @ShellTest(
     includeFilters = [ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = [GiveUniqueNames::class])]
 )
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@CommandScan("com.pavelshell.mediafilesutils.commands")
 class GiveUniqueNamesIntTest {
 
     @Autowired
