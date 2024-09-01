@@ -9,5 +9,4 @@ class MediaFilesUtilsApplicationTests {
 	@Test
 	fun contextLoads() {
 	}
-
 }

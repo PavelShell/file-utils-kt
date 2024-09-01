@@ -4,10 +4,7 @@ import com.pavelshell.mediafilesutils.common.FileTreeWalker
 import org.springframework.shell.command.annotation.Command
 import org.springframework.shell.command.annotation.Option
 import java.io.File
-import java.io.FileNotFoundException
-import java.nio.file.Path
 import java.util.*
-import kotlin.io.path.exists
 
 @Command
 class GiveUniqueNames {

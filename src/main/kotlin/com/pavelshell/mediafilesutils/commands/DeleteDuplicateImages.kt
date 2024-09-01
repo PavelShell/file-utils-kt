@@ -28,24 +28,23 @@ class DeleteDuplicateImages {
     fun run(
         @Option(label = "path", longNames = ["path"], required = true) pathString: String
     ): String = runBlocking(Dispatchers.Default) {
-        val filesToDescriptors = FileTreeWalker.getFiles(pathString)
+        val filesToCheck = FileTreeWalker.getFiles(pathString)
             .map { async { it to computeKeyPointsDescriptors(readMatrix(it)) } }
             .awaitAll()
             .toMap()
+
         val checkedFiles = mutableSetOf<File>()
         val duplicates = mutableMapOf<File, Collection<File>>()
-        filesToDescriptors.entries.forEach { (fileToCompare, descriptor) ->
-            if (!checkedFiles.contains(fileToCompare)) {
-                checkedFiles.add(fileToCompare)
-                for (fileToDescriptor in (filesToDescriptors - checkedFiles)) {
-                    if (computeDescriptorsDifference(fileToDescriptor.value, descriptor) < 15) {
-                        checkedFiles.add(fileToDescriptor.key)
-                        duplicates.merge(fileToCompare, listOf(fileToDescriptor.key)) { old, new -> old + new }
-                    }
-                }
+        filesToCheck.entries.forEach { (file, descriptor) ->
+            if (!checkedFiles.contains(file)) {
+                checkedFiles += file
+                val similarFiles = findSimilarByDescriptor((filesToCheck - checkedFiles), descriptor)
+                duplicates[file] = similarFiles
+                checkedFiles += similarFiles
                 println("Checked ${checkedFiles.size} files...")
             }
         }
+
         println("Deleting duplicates...")
         duplicates.forEach { (file, sameFiles) ->
             (sameFiles + file)
@@ -54,8 +53,19 @@ class DeleteDuplicateImages {
                 .run { dropLast(1) }
                 .forEach { it.delete() }
         }
-        return@runBlocking "Checked ${checkedFiles.size} files " +
-                "and deleted ${duplicates.values.flatten().size} duplicates for ${duplicates.keys.size} files."
+        return@runBlocking "Checked ${filesToCheck.size} files " +
+                "and deleted ${duplicates.values.flatten().size} duplicates."
+    }
+
+    private fun findSimilarByDescriptor(files: Map<File, Mat>, originalDescriptor: Mat): List<File> {
+        val matches = mutableListOf<File>()
+        for ((file, descriptor) in files) {
+            val areSame = computeDescriptorsDifference(descriptor, originalDescriptor) < FILE_MATCH_THRESHOLD
+            if (areSame) {
+                matches += file
+            }
+        }
+        return matches
     }
 
     private fun Mat.resizeTo(size: Size): Mat = Mat().also { opencv_imgproc.resize(this, it, size) }
@@ -78,6 +88,7 @@ class DeleteDuplicateImages {
     }
 
     private companion object {
+        private const val FILE_MATCH_THRESHOLD = 15
         private val ORB = org.bytedeco.opencv.opencv_features2d.ORB.create()
         private val MATCHER = BFMatcher(opencv_core.NORM_HAMMING, true)
     }

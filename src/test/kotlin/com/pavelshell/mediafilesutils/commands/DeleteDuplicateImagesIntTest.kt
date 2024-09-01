@@ -53,7 +53,7 @@ class DeleteDuplicateImagesIntTest {
         // then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             ShellAssertions.assertThat(session.screen())
-                .containsText("Checked 14 files and deleted 5 duplicates for 3 files.")
+                .containsText("Checked 14 files and deleted 5 duplicates.")
         }
         val imagesWithoutDuplicates = testImagesDir.listFiles().map { it.name }
         Assertions.assertEquals(9, imagesWithoutDuplicates.size)

@@ -6,11 +6,9 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
-import org.springframework.shell.command.annotation.CommandScan
 import org.springframework.shell.test.ShellAssertions
 import org.springframework.shell.test.ShellTestClient
 import org.springframework.shell.test.autoconfigure.ShellTest
-import org.springframework.test.annotation.DirtiesContext
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -90,10 +88,10 @@ class GiveUniqueNamesIntTest {
         }
         Assertions.assertTrue(dir0.exists(), "Should neither delete nor rename the directory with files")
         Assertions.assertEquals(3, dir0.listFiles().size)
-        val dir0File0New = dir0.listFiles().filter { it.isFile }.first()
+        val dir0File0New = dir0.listFiles().first { it.isFile }
         Assertions.assertNotEquals(dir0File0.name, dir0File0New.name)
         Assertions.assertEquals(dir0File0Contents, dir0File0New.readText())
-        val dir0File1New = dir0.listFiles().filter { it.isFile }.last()
+        val dir0File1New = dir0.listFiles().last { it.isFile }
         Assertions.assertNotEquals(dir0File1.name, dir0File1New.name)
         Assertions.assertEquals(dir0File1Contents, dir0File1New.readText())
         Assertions.assertTrue(dir0File0New.name < dir0File1New.name)
