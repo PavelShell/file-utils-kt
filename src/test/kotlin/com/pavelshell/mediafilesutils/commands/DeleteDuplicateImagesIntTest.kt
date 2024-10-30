@@ -16,7 +16,9 @@ import java.util.concurrent.TimeUnit
 import kotlin.io.path.pathString
 
 @ShellTest(
-    includeFilters = [ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = [DeleteDuplicateImages::class])]
+    includeFilters = [
+        ComponentScan.Filter(type = FilterType.REGEX, pattern = ["com.pavelshell.mediafilesutils.commands.deleteduplicates.*"])
+    ]
 )
 class DeleteDuplicateImagesIntTest {
 
@@ -45,8 +47,8 @@ class DeleteDuplicateImagesIntTest {
         val session = client
             .nonInterative(
                 "delete-duplicate-images",
-                "--path",
-                testImagesDir.pathString.replace(BACKSLASH, BACKSLASH.repeat(2))
+                "--mode", "SIMILAR",
+                "--path", testImagesDir.pathString.replace(BACKSLASH, BACKSLASH.repeat(2))
             )
             .run()
 

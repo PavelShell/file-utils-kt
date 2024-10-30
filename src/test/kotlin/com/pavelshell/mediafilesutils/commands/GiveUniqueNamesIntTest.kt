@@ -16,7 +16,9 @@ import kotlin.io.path.*
 
 
 @ShellTest(
-    includeFilters = [ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = [GiveUniqueNames::class])]
+    includeFilters = [
+        ComponentScan.Filter(type = FilterType.REGEX, pattern = ["com.pavelshell.mediafilesutils.commands.*"])
+    ]
 )
 class GiveUniqueNamesIntTest {
 

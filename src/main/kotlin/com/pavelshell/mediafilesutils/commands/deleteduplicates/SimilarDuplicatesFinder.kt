@@ -1,6 +1,5 @@
-package com.pavelshell.mediafilesutils.commands
+package com.pavelshell.mediafilesutils.commands.deleteduplicates
 
-import com.pavelshell.mediafilesutils.common.FileTreeWalker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -13,49 +12,37 @@ import org.bytedeco.opencv.opencv_core.KeyPointVector
 import org.bytedeco.opencv.opencv_core.Mat
 import org.bytedeco.opencv.opencv_core.Size
 import org.bytedeco.opencv.opencv_features2d.BFMatcher
-import org.springframework.shell.command.annotation.Command
-import org.springframework.shell.command.annotation.Option
+import org.springframework.stereotype.Component
 import java.io.File
 
-@Command
-class DeleteDuplicateImages {
+/**
+ * Finds all files with similar content. Works only with images.
+ */
+@Component
+class SimilarDuplicatesFinder(
+    override val comparisonMode: ComparisonMode = ComparisonMode.SIMILAR
+) : AbstractDuplicatesFinder() {
 
-    @Command(
-        command = ["delete-duplicate-images"],
-        description = "For each image in the directory and all sub-directories deletes duplicated images" +
-                " and leaves only the one copy with the best quality, judging by size."
-    )
-    fun run(
-        @Option(label = "path", longNames = ["path"], required = true) pathString: String
-    ): String = runBlocking(Dispatchers.Default) {
-        val filesToCheck = FileTreeWalker.getFiles(pathString)
-            .map { async { it to computeKeyPointsDescriptors(readMatrix(it)) } }
-            .awaitAll()
-            .toMap()
+    override fun findDuplicates(files: Collection<File>): Map<File, Collection<File>> =
+        runBlocking(Dispatchers.Default) {
+            val filesToCheck = files
+                .map { async { it to computeKeyPointsDescriptors(readMatrix(it)) } }
+                .awaitAll()
+                .toMap()
 
-        val checkedFiles = mutableSetOf<File>()
-        val duplicates = mutableMapOf<File, Collection<File>>()
-        filesToCheck.entries.forEach { (file, descriptor) ->
-            if (!checkedFiles.contains(file)) {
-                checkedFiles += file
-                val similarFiles = findSimilarByDescriptor((filesToCheck - checkedFiles), descriptor)
-                duplicates[file] = similarFiles
-                checkedFiles += similarFiles
-                println("Checked ${checkedFiles.size} files...")
+            val checkedFiles = mutableSetOf<File>()
+            val duplicates = mutableMapOf<File, Collection<File>>()
+            filesToCheck.entries.forEach { (file, descriptor) ->
+                if (!checkedFiles.contains(file)) {
+                    checkedFiles += file
+                    val similarFiles = findSimilarByDescriptor((filesToCheck - checkedFiles), descriptor)
+                    duplicates[file] = similarFiles
+                    checkedFiles += similarFiles
+                    println("Checked ${checkedFiles.size} files...")
+                }
             }
+            return@runBlocking duplicates
         }
-
-        println("Deleting duplicates...")
-        duplicates.forEach { (file, sameFiles) ->
-            (sameFiles + file)
-                .toMutableList()
-                .sortedBy { it.length() }
-                .run { dropLast(1) }
-                .forEach { it.delete() }
-        }
-        return@runBlocking "Checked ${filesToCheck.size} files " +
-                "and deleted ${duplicates.values.flatten().size} duplicates."
-    }
 
     private fun findSimilarByDescriptor(files: Map<File, Mat>, originalDescriptor: Mat): List<File> {
         val matches = mutableListOf<File>()
