@@ -9,5 +9,5 @@ import org.springframework.shell.command.annotation.CommandScan
 class MediaFilesUtilsApplication
 
 fun main(args: Array<String>) {
-	runApplication<MediaFilesUtilsApplication>(*args)
+    runApplication<MediaFilesUtilsApplication>(*args)
 }

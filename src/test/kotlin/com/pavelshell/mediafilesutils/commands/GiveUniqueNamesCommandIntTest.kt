@@ -20,7 +20,7 @@ import kotlin.io.path.*
         ComponentScan.Filter(type = FilterType.REGEX, pattern = ["com.pavelshell.mediafilesutils.commands.*"])
     ]
 )
-class GiveUniqueNamesIntTest {
+class GiveUniqueNamesCommandIntTest {
 
     @Autowired
     private lateinit var client: ShellTestClient

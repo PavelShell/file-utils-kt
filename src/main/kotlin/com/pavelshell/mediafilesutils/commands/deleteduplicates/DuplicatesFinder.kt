@@ -2,20 +2,16 @@ package com.pavelshell.mediafilesutils.commands.deleteduplicates
 
 import java.io.File
 
-/**
- * Used to find duplicates among provided files.
- */
-abstract class AbstractDuplicatesFinder {
-
+interface DuplicatesFinder {
     /**
      * Type of comparison algorithm used to find duplicates.
      */
-    abstract val comparisonMode: ComparisonMode
+    val comparisonMode: ComparisonMode
 
     /**
      * Finds duplicates among provided [files]
      */
-    abstract fun findDuplicates(files: Collection<File>): Map<File, Collection<File>>
+    fun findDuplicates(files: Collection<File>): Set<Set<File>>
 
     /**
      * Enum of file comparison algorithms.

@@ -1,5 +1,6 @@
 package com.pavelshell.mediafilesutils.commands.deleteduplicates
 
+import com.pavelshell.mediafilesutils.commands.deleteduplicates.DuplicatesFinder.ComparisonMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -21,9 +22,9 @@ import java.io.File
 @Component
 class SimilarDuplicatesFinder(
     override val comparisonMode: ComparisonMode = ComparisonMode.SIMILAR
-) : AbstractDuplicatesFinder() {
+) : DuplicatesFinder {
 
-    override fun findDuplicates(files: Collection<File>): Map<File, Collection<File>> =
+    override fun findDuplicates(files: Collection<File>): Set<Set<File>> =
         runBlocking(Dispatchers.Default) {
             val filesToCheck = files
                 .map { async { it to computeKeyPointsDescriptors(readMatrix(it)) } }
@@ -31,12 +32,14 @@ class SimilarDuplicatesFinder(
                 .toMap()
 
             val checkedFiles = mutableSetOf<File>()
-            val duplicates = mutableMapOf<File, Collection<File>>()
+            val duplicates = mutableSetOf<Set<File>>()
             filesToCheck.entries.forEach { (file, descriptor) ->
                 if (!checkedFiles.contains(file)) {
                     checkedFiles += file
                     val similarFiles = findSimilarByDescriptor((filesToCheck - checkedFiles), descriptor)
-                    duplicates[file] = similarFiles
+                    if (similarFiles.isNotEmpty()) {
+                        duplicates += similarFiles + file
+                    }
                     checkedFiles += similarFiles
                     println("Checked ${checkedFiles.size} files...")
                 }
@@ -44,8 +47,8 @@ class SimilarDuplicatesFinder(
             return@runBlocking duplicates
         }
 
-    private fun findSimilarByDescriptor(files: Map<File, Mat>, originalDescriptor: Mat): List<File> {
-        val matches = mutableListOf<File>()
+    private fun findSimilarByDescriptor(files: Map<File, Mat>, originalDescriptor: Mat): Set<File> {
+        val matches = mutableSetOf<File>()
         for ((file, descriptor) in files) {
             val areSame = computeDescriptorsDifference(descriptor, originalDescriptor) < FILE_MATCH_THRESHOLD
             if (areSame) {

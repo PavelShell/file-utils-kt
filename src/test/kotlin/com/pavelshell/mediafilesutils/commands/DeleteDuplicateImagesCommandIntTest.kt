@@ -17,10 +17,13 @@ import kotlin.io.path.pathString
 
 @ShellTest(
     includeFilters = [
-        ComponentScan.Filter(type = FilterType.REGEX, pattern = ["com.pavelshell.mediafilesutils.commands.deleteduplicates.*"])
+        ComponentScan.Filter(
+            type = FilterType.REGEX,
+            pattern = ["com.pavelshell.mediafilesutils.commands.deleteduplicates.*"]
+        )
     ]
 )
-class DeleteDuplicateImagesIntTest {
+class DeleteDuplicateImagesCommandIntTest {
 
     @Autowired
     private lateinit var client: ShellTestClient
@@ -37,7 +40,7 @@ class DeleteDuplicateImagesIntTest {
     }
 
     @Test
-    fun `should delete straight duplicates and similar images`() {
+    fun `should delete similar images`() {
         // given
         val testImagesDir = Files.createTempDirectory("some-dir")
             .also { File("src/test/resources/duplicated-images").copyRecursively(it.toFile()) }
@@ -66,6 +69,34 @@ class DeleteDuplicateImagesIntTest {
         Assertions.assertTrue(imagesWithoutDuplicates.contains("test-compress-5-percentchanged-big.jpg"))
         Assertions.assertTrue(imagesWithoutDuplicates.contains("test1.jpg"))
         Assertions.assertTrue(imagesWithoutDuplicates.contains("test2.jpg"))
+        Assertions.assertTrue(
+            imagesWithoutDuplicates.contains("aFdxgzWCuig - Copy.jpg")
+                    || imagesWithoutDuplicates.contains("aFdxgzWCuig.jpg")
+        )
+    }
+
+    @Test
+    fun `should delete exact same images`() {
+        // given
+        val testImagesDir = Files.createTempDirectory("some-dir")
+            .also { File("src/test/resources/duplicated-images").copyRecursively(it.toFile()) }
+
+
+        // when
+        val session = client
+            .nonInterative(
+                "delete-duplicate-images",
+                "--path", testImagesDir.pathString.replace(BACKSLASH, BACKSLASH.repeat(2))
+            )
+            .run()
+
+        // then
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+            ShellAssertions.assertThat(session.screen())
+                .containsText("Checked 14 files and deleted 1 duplicates.")
+        }
+        val imagesWithoutDuplicates = testImagesDir.listFiles().map { it.name }
+        Assertions.assertEquals(13, imagesWithoutDuplicates.size)
         Assertions.assertTrue(
             imagesWithoutDuplicates.contains("aFdxgzWCuig - Copy.jpg")
                     || imagesWithoutDuplicates.contains("aFdxgzWCuig.jpg")

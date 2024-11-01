@@ -7,7 +7,7 @@ import java.io.File
 import java.util.*
 
 @Command
-class GiveUniqueNames {
+class GiveUniqueNamesCommand {
 
     @Command(command = ["give-unique-names"], description = "Gives a unique names")
     fun run(
